@@ -1,8 +1,26 @@
-CC=gcc
-CFLAGS=-pthread
+include Makefile.inc
 
-server: main.o
-	$(CC) -g main.cpp -o server
+GEN_EXE = server
 
-clean:
-	rm main.o server
+LINUX_EXE = 
+
+EXE = ${GEN_EXE} ${LINUX_EXE}
+
+OBJS = main.cpp Transaction.cpp Transaction.h StockPosition.cpp StockPosition.h UserPosition.cpp UserPosition.h
+
+all : ${EXE}
+
+allgen : ${GEN_EXE}
+
+server:
+	${CC} -o server ${OBJS} ${CXXFLAGS}
+
+
+CFLAGS = ${IMPL_CFLAGS} ${IMPL_THREAD_FLAGS}
+LDLIBS = ${IMPL_LDLIBS} ${IMPL_THREAD_FLAGS}
+
+clean : 
+	${RM} ${EXE} *.o
+
+showall :
+	@ echo ${EXE}
