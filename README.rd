@@ -1,2 +1,2 @@
-Sorver on linux
-Client on windows
+Server for linux
+Client for windows
