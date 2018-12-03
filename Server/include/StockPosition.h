@@ -1,7 +1,7 @@
+//Holds data about a single stock position
+
 #ifndef Stockposition_H
 #define Stockposition_H
-
-//Holds data about a single stock position
 
 #include <string>
 
