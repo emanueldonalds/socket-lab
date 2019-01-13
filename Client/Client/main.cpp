@@ -1,6 +1,6 @@
 /*
-Client program for sending stock market position transactions to a server
-Usage: Client $(IPADDR) $(PORT)
+* Client program for sending stock market position transactions to a server
+* Usage: Client $(IPADDR) $(PORT)
 */
 
 #include <winsock.h>
@@ -13,6 +13,7 @@ Usage: Client $(IPADDR) $(PORT)
 #include <stdlib.h>
 #include <conio.h>
 #include <string>
+#include <string.h>
 #include "Transaction.h"
 #include <io.h>
 
@@ -30,12 +31,15 @@ int main(int argc, char* argv[])
 	struct  sockaddr_in sadServerAddress;	
 	int     iPortNumber;					
 	char    *szHost;						
-	int     n;								
-	char    szBuffer[BUF_SIZE];				
+	int     n;	
+	int		quit;
+	char    serverBuffer[BUF_SIZE];
+	char	transactionBuffer[BUF_SIZE];
 	WSADATA wsaData;
-	WORD wVersionRequested;
-	int err;
-	SOCKET     sd;								
+	WORD	wVersionRequested;
+	int		err;
+	SOCKET  sd;			
+
 	wVersionRequested = MAKEWORD(2, 2);
 	err = WSAStartup(wVersionRequested, &wsaData);
 	if (err != 0)
@@ -45,6 +49,8 @@ int main(int argc, char* argv[])
 	
 	memset((char *)&sadServerAddress, 0, sizeof(sadServerAddress)); 
 	sadServerAddress.sin_family = AF_INET;        
+
+	//CHECK PARAMETERS AND SET DEFAULT VALUES
 
 	if (argc > 2)
 	{
@@ -71,6 +77,8 @@ int main(int argc, char* argv[])
 	{
 		szHost = szLocalHost;
 	}
+
+	//CONNECT TO SERVER
 
 	pHostTableEntry = gethostbyname(szHost);
 
@@ -103,26 +111,88 @@ int main(int argc, char* argv[])
 
 	printf("Client got connected to the server.\n");
 
-	//CREATE A NEW TRANSACTION
-	std::stringstream transactionDetails;
-	transactionDetails << "Carl IBM b 120";
-	Transaction transaction(transactionDetails);
+	//RECIEVE SOME BITS FROM SERVER
+	n = recv(sd, serverBuffer, BUF_SIZE, 0);
+	if (n <= 0)
+	{
+		printf("Error recieving buffer");
+		return 1;
+	}
+	printf("Recieved initial: %d bits: %s\n", n, serverBuffer);
 
-	//CONVERT TRANSACTION DATA TO BUFFER DATA
-	char tBuffer[BUF_SIZE];
-	std::stringstream ostr;
-	transaction.OutputData(ostr);
-	strcpy_s(tBuffer, ostr.str().c_str());
-	printf("Prepared the buffer with: %s\n", tBuffer);
-	
-	//
-	
-	n = recv(sd, szBuffer, BUF_SIZE, 0);
-	printf("Recieved: %d bits: %s\n", n, szBuffer);
-	
-	//SEND BUFFER TO SERVER
-	n =  send(sd, tBuffer, strlen(tBuffer)+1, 0);
-	printf("Sent: %d bits: %s\n", n, tBuffer);
+	//START LOOP
+	while (true)
+	{
+		//PROMPT USER FOR TRASACTION DETAILS
+		std::string user;
+		std::string ticket;
+		std::string bs;
+		int amount;
+
+		std::cout << "(1)\tBuy\n(2)\tSell\n";
+		std::cin >> bs;
+		std::cout << std::endl;
+		if (bs == "1")
+		{
+			bs = "b";
+			std::cout << "BUYING STOCK\n";
+		}
+		else
+		{
+			bs = "s";
+			std::cout << "SELLING STOCK\n";
+		}
+		std::cout << "User name:\t";
+		std::cin >> user;
+		std::cout << "Stock ticket:\t";
+		std::cin >> ticket;
+		std::cout << "Ticket amount:\t";
+		while (!(std::cin >> amount))
+		{
+			std::cout << "Enter an integer number\t";
+			std::cin.clear();
+			std::cin.ignore(INT_MAX, '\n');
+		}
+		std::cout << std::endl;
+
+		//_getch();
+
+		//CREATE A NEW TRANSACTION
+		std::stringstream transactionDetails;
+		transactionDetails << user << " " << ticket << " " << bs << " " << amount;
+		Transaction transaction(transactionDetails);
+
+		//CONVERT TRANSACTION DATA TO BUFFER DATA
+		std::stringstream ostr;
+		transaction.OutputData(ostr);
+		strcpy_s(transactionBuffer, ostr.str().c_str());
+
+		//SEND BUFFER TO SERVER
+		n = send(sd, transactionBuffer, strlen(transactionBuffer) + 1, 0);
+		printf("Sent %d bits:\t\t\t %s\n", n, transactionBuffer);
+
+		//RECIEVE UPDATE MESSAGE FROM SERVER
+		n = recv(sd, serverBuffer, BUF_SIZE, 0);
+		if (n <= 0)
+		{
+			printf("Error recieving buffer");
+			return 1;
+		}
+
+		//DISPLAY MESSAGE
+		printf("Recieved transaction message:\t %s\n", serverBuffer);
+
+		//CHECK IF QUIT OR CONTINUE
+		printf("\n(1)\tDo another transaction\n(2)\tQuit\n");
+		std::cin >> quit;
+		if (quit == 2)
+		{
+			n = send(sd, "quit", 4, 0);
+			printf("Exiting\n");
+			break;
+		}
+
+	}//ITERATE LOOP
 
 	closesocket(sd);
 	_getch();
