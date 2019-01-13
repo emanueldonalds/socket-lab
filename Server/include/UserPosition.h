@@ -18,7 +18,7 @@ public:
 private:
 	int m_iTickers;
 	std::string m_sUser;
-	std::map<std::string, long int> m_StockPortfolio; //'Cheating' a bit by using map instead of an array of stockposition objects
+	std::map<std::string, long int> m_StockPortfolio; //Cheating a bit by using map instead of an array of stockposition objects
 };
 
 #endif

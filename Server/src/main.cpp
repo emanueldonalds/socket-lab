@@ -21,7 +21,7 @@
 #define QUEUESIZE       6    
 #define BUF_SIZE 		2048
 
-int     iVisits      =  0;   
+std::map<std::string, UserPosition> users; //A structure for remembering users and thier positions
 
 void* client_handler(void *);
 
@@ -33,6 +33,18 @@ struct clientHandlerArgs
 
 int main(int argc, char *argv[])
 {
+	//TODO: decide between pipe or mutex and create something that updates the structure
+	/*
+	UserPosition userPosition("Carl");
+	userPosition.AddNewPosition("IBM", 120, 'b');
+	userPosition.AddNewPosition("IBM", 180, 'b');
+	userPosition.AddNewPosition("APP", 20, 'b');
+	userPosition.AddNewPosition("APP", 10, 's');
+	userPosition.AddNewPosition("BNP", 20, 's');
+	userPosition.AddNewPosition("BNP", 10, 's');
+	//Add user again to save to the users structure
+	users["Carl"] = userPosition;
+	*/
 	struct  protoent *pProtocolTableEntry;
 	struct  sockaddr_in sadServerAddress;
 	struct  sockaddr_in sadClientAddress;

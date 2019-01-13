@@ -38,5 +38,5 @@ void UserPosition::AddNewPosition(std::string sTicker, int iAmount, char cBS)
 				m_StockPortfolio[sTicker] -= iAmount;
 		}
 	}
-	
+	m_iTickers = m_StockPortfolio.size();
 }
