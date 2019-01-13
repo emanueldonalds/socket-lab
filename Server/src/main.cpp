@@ -10,8 +10,12 @@
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
-#include "Transaction.h"
 #include <sys/io.h>
+
+#include <iostream>
+#include <map>
+#include "Transaction.h"
+#include "UserPosition.h"
 
 #define PROTOPORT       5193 
 #define QUEUESIZE       6    
@@ -88,8 +92,7 @@ int main(int argc, char *argv[])
 	pthread_t thread_id;
 	while( (clientSocket = accept(sockedDesc, (struct sockaddr *)&sadClientAddress, (socklen_t*)&iAddressLength)) )
 	{
-		puts("Connection established");
-
+		puts("NEW CONNECTION");
 		if (pthread_create( &thread_id, NULL, client_handler, (void*) &clientSocket) < 0)
 		{
 			perror("Thread create failure");
@@ -101,21 +104,58 @@ int main(int argc, char *argv[])
         exit(0);
 }
 
-/* USE THIS
-#include <iostream>
-#include <sstream>
-#include <map>
-#include "Transaction.h"
-#include "UserPosition.h"
-#include <stdio.h>
-*/
-
 void * client_handler(void* socketDesc)
 {
 	int sock = *(int*)socketDesc;
+	int n;
+	char serverBuffer[BUF_SIZE] = "CONNECTION ESTABLISHED";
+	char transactionBuffer[BUF_SIZE];
 
-/* USE THIS
-	std::map<std::string, UserPosition> users; //A structure for remembering users and thier positions
+	//SEND INITIAL BITS TO CLIENT
+	n = send(sock, serverBuffer, strlen(serverBuffer) + 1, 0);
+	if(n>0)
+		printf("Sent: %d bits: %s\n", n, serverBuffer);
+	else
+		printf("Error sending initial bits, n: %d \n", n);
+	
+	//START LOOP
+	while(true)
+	{
+
+		//RECIEVE TRANSACTION DETAILS (ALSO CHECK FOR QUIT MESSAGE)
+		n=recv(sock, transactionBuffer, BUF_SIZE, 0);
+		if(n > 0)
+			printf("Recieved: %d bits: %s\n", n, transactionBuffer);
+		else
+		{
+			printf("Error recieving, n: %d \n", n);
+			break;
+		}
+
+		if (strncmp(transactionBuffer, "quit", 4) == 0)
+		{
+			printf("Quit message recieved\n");
+			break;
+		}
+
+		//DO TRANSACTION (GENERATE RETURN MESSAGE)
+		strcpy(serverBuffer, "TRANSACTION RETURN MESSAGE");
+
+		//SEND BACK MESSAGE
+		n = send(sock, serverBuffer, strlen(serverBuffer) + 1, 0);
+		if(n>0)
+			printf("Sent: %d bits: %s\n", n, serverBuffer);
+		else
+		{
+			printf("Error sending initial bits, n: %d \n", n);
+			break;
+		}
+
+	}//ITERATE LOOP
+
+	//CLOSE CONNECTION
+
+/*	std::map<std::string, UserPosition> users; //A structure for remembering users and thier positions
 
 	for (int i = 0; i < 10; i++)
 	{
@@ -150,8 +190,7 @@ void * client_handler(void* socketDesc)
 
 		delete t;
 	}
-	*/
-
+*/
 	/* dont use this
 	int sock = *(int*)socketDesc;
 	int n;
