@@ -38,7 +38,8 @@ int main(int argc, char* argv[])
 	WSADATA wsaData;
 	WORD	wVersionRequested;
 	int		err;
-	SOCKET  sd;			
+	SOCKET  sd;		
+	std::string user;
 
 	wVersionRequested = MAKEWORD(2, 2);
 	err = WSAStartup(wVersionRequested, &wsaData);
@@ -51,7 +52,6 @@ int main(int argc, char* argv[])
 	sadServerAddress.sin_family = AF_INET;        
 
 	//CHECK PARAMETERS AND SET DEFAULT VALUES
-
 	if (argc > 2)
 	{
 		iPortNumber = atoi(argv[2]);  
@@ -78,13 +78,17 @@ int main(int argc, char* argv[])
 		szHost = szLocalHost;
 	}
 
-	//CONNECT TO SERVER
+	//PROMT USER NAME
+	std::cout << "User name: ";
+	std::cin >> user;
 
+	//CONNECT TO SERVER
 	pHostTableEntry = gethostbyname(szHost);
 
 	if (pHostTableEntry == 0)
 	{
 		fprintf(stderr, "invalid szHost: %s\n", szHost);
+		_getch();
 		exit(1);
 	}
 
@@ -93,6 +97,7 @@ int main(int argc, char* argv[])
 	if ((pProtocolTableEntry = getprotobyname("tcp")) == 0)
 	{
 		fprintf(stderr, "cannot map \"tcp\" to protocol number");
+		_getch();
 		exit(1);
 	}
 
@@ -100,12 +105,14 @@ int main(int argc, char* argv[])
 	if (sd < 0)
 	{
 		fprintf(stderr, "socket creation failed\n");
+		_getch();
 		exit(1);
 	}
 
 	if (connect(sd, (struct sockaddr *)&sadServerAddress, sizeof(sadServerAddress)) < 0)
 	{
 		fprintf(stderr, "socket creation failed.\n");
+		_getch();
 		exit(1);
 	}
 
@@ -116,15 +123,15 @@ int main(int argc, char* argv[])
 	if (n <= 0)
 	{
 		printf("Error recieving buffer");
-		return 1;
+		_getch();
+		exit(1);
 	}
-	printf("Recieved initial: %d bits: %s\n", n, serverBuffer);
+	printf("Server message: %s\n", n, serverBuffer);
 
 	//START LOOP
 	while (true)
 	{
 		//PROMPT USER FOR TRASACTION DETAILS
-		std::string user;
 		std::string ticket;
 		std::string bs;
 		int amount;
@@ -135,15 +142,13 @@ int main(int argc, char* argv[])
 		if (bs == "1")
 		{
 			bs = "b";
-			std::cout << "BUYING STOCK\n";
+			std::cout << "BUYING STOCK\n\n";
 		}
 		else
 		{
 			bs = "s";
-			std::cout << "SELLING STOCK\n";
+			std::cout << "SELLING STOCK\n\n";
 		}
-		std::cout << "User name:\t";
-		std::cin >> user;
 		std::cout << "Stock ticket:\t";
 		std::cin >> ticket;
 		std::cout << "Ticket amount:\t";
@@ -154,7 +159,6 @@ int main(int argc, char* argv[])
 			std::cin.ignore(INT_MAX, '\n');
 		}
 		std::cout << std::endl;
-
 		//_getch();
 
 		//CREATE A NEW TRANSACTION
@@ -169,18 +173,18 @@ int main(int argc, char* argv[])
 
 		//SEND BUFFER TO SERVER
 		n = send(sd, transactionBuffer, strlen(transactionBuffer) + 1, 0);
-		printf("Sent %d bits:\t\t\t %s\n", n, transactionBuffer);
 
 		//RECIEVE UPDATE MESSAGE FROM SERVER
 		n = recv(sd, serverBuffer, BUF_SIZE, 0);
 		if (n <= 0)
 		{
 			printf("Error recieving buffer");
-			return 1;
+			_getch();
+			exit(1);
 		}
 
 		//DISPLAY MESSAGE
-		printf("Recieved transaction message:\t %s\n", serverBuffer);
+		printf("Recieved updated ticker amount for \"%s\": %s\n", transaction.GetTicker().c_str(), serverBuffer);
 
 		//CHECK IF QUIT OR CONTINUE
 		printf("\n(1)\tDo another transaction\n(2)\tQuit\n");
