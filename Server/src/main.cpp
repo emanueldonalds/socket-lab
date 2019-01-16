@@ -21,6 +21,7 @@
 #define QUEUESIZE       6    
 #define BUF_SIZE 		2048
 
+pthread_mutex_t lock;
 
 void* client_handler(void *);
 
@@ -34,18 +35,7 @@ struct clientHandlerArgs
 int main(int argc, char *argv[])
 {
 	std::map<std::string, UserPosition> users; //A structure for remembering users and thier positions
-	//TODO: decide between pipe or mutex and create something that updates the structure
-	/*
-	UserPosition userPosition("Carl");
-	userPosition.AddNewPosition("IBM", 120, 'b');
-	userPosition.AddNewPosition("IBM", 180, 'b');
-	userPosition.AddNewPosition("APP", 20, 'b');
-	userPosition.AddNewPosition("APP", 10, 's');
-	userPosition.AddNewPosition("BNP", 20, 's');
-	userPosition.AddNewPosition("BNP", 10, 's');
-	//Add user again to save to the users structure
-	users["Carl"] = userPosition;
-	*/
+
 	struct  protoent *pProtocolTableEntry;
 	struct  sockaddr_in sadServerAddress;
 	struct  sockaddr_in sadClientAddress;
@@ -59,6 +49,13 @@ int main(int argc, char *argv[])
 	memset((char *)&sadServerAddress,0,sizeof(sadServerAddress)); 
 	sadServerAddress.sin_family = AF_INET;         
 	sadServerAddress.sin_addr.s_addr = INADDR_ANY; 
+
+	//INITIALIZE MUTEX
+	if (pthread_mutex_init(&lock, NULL) != 0)
+	{
+		fprintf(stderr,"Mutex init failed\n");
+		exit(1);
+	}
 
 	//CHECK IF USER HAS PROVIDED PORT NUMBER IN ARGS ELSE USE DEFAULT PORT
 	if (argc > 1) 
@@ -128,6 +125,7 @@ int main(int argc, char *argv[])
 		}
 	}
 		pthread_join(thread_id, NULL);
+		pthread_mutex_destroy(&lock);
 
         exit(0);
 }
@@ -136,7 +134,7 @@ void * client_handler(void* args)
 {
 	struct clientHandlerArgs *pargs = (struct clientHandlerArgs *) args;
 	int sock = pargs->sClientSocket;
-	std::map<std::string, UserPosition> &users = {*pargs->users};
+	std::map<std::string, UserPosition> &users = {*pargs->users}; //All threads gets a pointer to the map structure
 	int n;
 	char serverBuffer[BUF_SIZE] = "CONNECTION ESTABLISHED";
 	char transactionBuffer[BUF_SIZE];
@@ -174,14 +172,20 @@ void * client_handler(void* args)
 		Transaction *transaction = new Transaction(iss);
 		
 		//DO TRANSACTION
-		users["Carl"].AddNewPosition(transaction->GetTicker(),
+		pthread_mutex_lock(&lock); //Lock mutex while fiddling with the users map
+
+		users[transaction->GetUser()].AddNewPosition(transaction->GetTicker(),
 									 transaction->GetAmount(),
 									 transaction->GetBS());
 
 		//PREPARE BUFFER WITH THE UPDATE TICKER AMOUNT
 		std::stringstream ssTickerAmount;
-		ssTickerAmount << users["Carl"].FindPosition(transaction->GetTicker());
+		ssTickerAmount << users[transaction->GetUser()].FindPosition(transaction->GetTicker());
+
+		pthread_mutex_unlock(&lock); //The mutex can be unlocked here
+
 		strcpy(serverBuffer, ssTickerAmount.str().c_str());
+
 
 		//SEND BACK MESSAGE
 		n = send(sock, serverBuffer, strlen(serverBuffer) + 1, 0);
