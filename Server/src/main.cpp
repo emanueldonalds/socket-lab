@@ -21,18 +21,19 @@
 #define QUEUESIZE       6    
 #define BUF_SIZE 		2048
 
-std::map<std::string, UserPosition> users; //A structure for remembering users and thier positions
 
 void* client_handler(void *);
 
 struct clientHandlerArgs 
 {
+	//The arguments to be passed to each client handler thread
 	int sClientSocket;
-	int pipeFd[2];
+	std::map<std::string, UserPosition> *users; //A pointer to the user position structure that will be shared among threads.
 };
 
 int main(int argc, char *argv[])
 {
+	std::map<std::string, UserPosition> users; //A structure for remembering users and thier positions
 	//TODO: decide between pipe or mutex and create something that updates the structure
 	/*
 	UserPosition userPosition("Carl");
@@ -59,7 +60,7 @@ int main(int argc, char *argv[])
 	sadServerAddress.sin_family = AF_INET;         
 	sadServerAddress.sin_addr.s_addr = INADDR_ANY; 
 
-	//CHECK FOR PROVIDED PORT NUMBER IN ARGS
+	//CHECK IF USER HAS PROVIDED PORT NUMBER IN ARGS ELSE USE DEFAULT PORT
 	if (argc > 1) 
 	{
 		iPortNumber = atoi(argv[1]);   
@@ -115,14 +116,10 @@ int main(int argc, char *argv[])
 	while( (clientSocket = accept(sockedDesc, (struct sockaddr *)&sadClientAddress, (socklen_t*)&iAddressLength)) )
 	{
 		puts("NEW CONNECTION");
+
+		//SETUP ARGUMENTS
 		pClientHandlerArgs.sClientSocket = clientSocket;
-		
-		//CREATE A PIPE FOR EACH CONNECTION
-		if (pipe(pClientHandlerArgs.pipeFd) == -1)
-		{
-			perror("Pipe create failure");
-			exit(1);
-		}
+		pClientHandlerArgs.users = &users;
 
 		if (pthread_create( &thread_id, NULL, client_handler, (void*) &pClientHandlerArgs) < 0)
 		{
@@ -139,7 +136,7 @@ void * client_handler(void* args)
 {
 	struct clientHandlerArgs *pargs = (struct clientHandlerArgs *) args;
 	int sock = pargs->sClientSocket;
-	int pipeFd[2] = {pargs->pipeFd[0], pargs->pipeFd[1]};
+	std::map<std::string, UserPosition> &users = {*pargs->users};
 	int n;
 	char serverBuffer[BUF_SIZE] = "CONNECTION ESTABLISHED";
 	char transactionBuffer[BUF_SIZE];
@@ -150,11 +147,10 @@ void * client_handler(void* args)
 		printf("Sent: %d bits: %s\n", n, serverBuffer);
 	else
 		printf("Error sending initial bits, n: %d \n", n);
-	
+
 	//START LOOP
 	while(true)
 	{
-
 		//RECIEVE TRANSACTION DETAILS (ALSO CHECK FOR QUIT MESSAGE)
 		n=recv(sock, transactionBuffer, BUF_SIZE, 0);
 		if(n > 0)
@@ -171,8 +167,21 @@ void * client_handler(void* args)
 			break;
 		}
 
-		//DO TRANSACTION (GENERATE RETURN MESSAGE)
-		strcpy(serverBuffer, "TRANSACTION RETURN MESSAGE");
+		//RECREATE THE TRANSACTION OBJECT
+		std::stringstream iss;
+		iss << transactionBuffer;
+
+		Transaction *transaction = new Transaction(iss);
+		
+		//DO TRANSACTION
+		users["Carl"].AddNewPosition(transaction->GetTicker(),
+									 transaction->GetAmount(),
+									 transaction->GetBS());
+
+		//PREPARE BUFFER WITH THE UPDATE TICKER AMOUNT
+		std::stringstream ssTickerAmount;
+		ssTickerAmount << users["Carl"].FindPosition(transaction->GetTicker());
+		strcpy(serverBuffer, ssTickerAmount.str().c_str());
 
 		//SEND BACK MESSAGE
 		n = send(sock, serverBuffer, strlen(serverBuffer) + 1, 0);
