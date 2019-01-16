@@ -126,7 +126,7 @@ int main(int argc, char* argv[])
 		_getch();
 		exit(1);
 	}
-	printf("Server message: %s\n", n, serverBuffer);
+	printf("Server message: %s\n", serverBuffer);
 
 	//START LOOP
 	while (true)
