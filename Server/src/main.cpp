@@ -1,3 +1,7 @@
+/*
+* Threaded server for keeping track of user positions
+*/
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -200,70 +204,6 @@ void * client_handler(void* args)
 	}//ITERATE LOOP
 
 	//CLOSE CONNECTION
-
-/*	std::map<std::string, UserPosition> users; //A structure for remembering users and thier positions
-
-	for (int i = 0; i < 10; i++)
-	{
-		std::stringstream iss; //The incoming buffer stream
-		iss << "Carl IBM s 24";
-
-		Transaction *t = new Transaction(iss); //parsing the buffer to a transaction object
-
-		//check if user is in map and retrieve or else add user to map
-		UserPosition userPosition;
-		std::map<std::string, UserPosition>::iterator it;
-		it = users.find(t->GetUser());
-		if (it != users.end())
-		{
-			userPosition = users[t->GetUser()];
-		}
-		else
-		{
-			userPosition = UserPosition(t->GetUser());
-			users[t->GetUser()] = userPosition;
-		}
-
-		//do transaction
-		userPosition.AddNewPosition(t->GetTicker(), t->GetAmount(), t->GetBS());
-		//Add user again to save to the users structure
-		users[t->GetUser()] = userPosition;
-
-		//retransmit the updated position data to the client
-		t->UpdateAmount(userPosition.FindPosition(t->GetTicker()));
-		std::stringstream oss;
-		t->OutputData(oss);
-
-		delete t;
-	}
-*/
-	/* dont use this
-	int sock = *(int*)socketDesc;
-	int n;
-	char message[BUF_SIZE] = "Hello from client handler";
-	char tBuffer[BUF_SIZE];
-
-	
-	
-	n = send(sock, message, strlen(message)+1, 0);
-	if(n>0)
-		printf("Sent: %d bits: %s\n", n, message);
-	else
-		printf("Error sending, n: %d \n", n);
-
-	n=recv(sock, tBuffer, BUF_SIZE, 0);
-	if(n > 0)
-		printf("Recieved: %d bits: %s\n", n, tBuffer);
-	else
-		printf("Error recieving, n: %d \n", n);
-
-	std::stringstream istr;
-	Transaction t;
-	istr << tBuffer;
-	istr >> t;
-	std::cout << t << std::endl;
-
-*/
 	printf("CLOSING CONNECTION\n");
 	close(sock);
 	return 0;
