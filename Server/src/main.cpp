@@ -187,6 +187,7 @@ void * client_handler(void* args)
 		ssTickerAmount << users[transaction->GetUser()].FindPosition(transaction->GetTicker());
 
 		pthread_mutex_unlock(&lock); //The mutex can be unlocked here
+		delete transaction;
 
 		strcpy(serverBuffer, ssTickerAmount.str().c_str());
 
